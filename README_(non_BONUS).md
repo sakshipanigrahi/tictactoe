@@ -1,29 +1,25 @@
-# Lab-6 Tic-Tac-Toe over UART (TivaWare / no-bonus version)
+# Lab-6 Tic-Tac-Toe over UART (non bonus)
 
 Two TM4C123 LaunchPads, each on an EduARM4 board, play Tic-Tac-Toe against each other. Moves are entered on the 4x4 keypad, exchanged between the boards over UART, and the game status is printed on a PC terminal.
 
-This version uses **TivaWare (driverlib)** for the UART. There is no `UART_Driver.h` / `UART_Driver.c` in the project and no custom UART function names; `main.c` calls TivaWare functions directly (`UARTConfigSetExpClk`, `UARTCharPutNonBlocking`, `UARTCharGetNonBlocking`, `UARTIntEnable`, ...). Everything that is not UART (keypad, 7-segment, LEDs, button, SysTick) is written directly against the TM4C123 registers.
-
-The same program is flashed onto **both** boards.
+UART is implemented with the TivaWare driver library (driverlib). The keypad, 7-segment display, LEDs, push button and SysTick are accessed through the TM4C123 registers directly. The same program runs on both boards.
 
 ## Project files
 
 | File | Purpose |
 |---|---|
-| `main.c` | Game logic, keypad, 7-segment, LEDs, SW1, SysTick, and the TivaWare UART setup and interrupt handlers |
+| `main.c` | Game logic, keypad, 7-segment display, LEDs, SW1, SysTick, and the TivaWare UART setup and interrupt handlers |
 | `startup.c` | Startup file with the vector table. `SysTick_Handler`, `GPIOPortC_Handler`, `GPIOPortF_Handler`, `UART0_Handler` and `UART5_Handler` are wired in; every other vector points to `IntDefaultHandler` |
-| TivaWare `driverlib` files | `sysctl.c`, `gpio.c`, `uart.c`, `interrupt.c`, `cpu.c` (linked from the TivaWare install) |
-
-`UART_Driver.h` and `UART_Driver.c` must **not** be in this project. If they are, `UART0_Handler` and `UART5_Handler` are defined twice and the link fails.
+| TivaWare driverlib | `sysctl.c`, `gpio.c`, `uart.c`, `interrupt.c` and `cpu.c`, linked from the TivaWare installation |
 
 ## Code Composer Studio setup
 
-1. Add the five driverlib `.c` files above to the project (Add Files, then Link to files).
+1. Add the five driverlib `.c` files listed above to the project (Add Files, then Link to files).
 2. Add the TivaWare root folder (for example `C:/ti/TivaWare_C_Series-2.2.0.295`) to the compiler include paths, so that `inc/hw_memmap.h` and `driverlib/uart.h` resolve.
 3. Under Build > GNU Compiler > Symbols, add:
    - `PART_TM4C123GH6PM`
    - `TARGET_IS_TM4C123_RA1`
-   - `gcc` (needed so that `cpu.c` compiles its GCC branch; without it `cpu.c` builds to nothing and the linker reports undefined references to `CPUcpsid`, `CPUcpsie`, `CPUwfi`, `CPUbasepriGet`, `CPUbasepriSet` and `SysCtlDelay`)
+   - `gcc` (selects the GCC implementation of the CPU functions in `cpu.c`)
 4. Clean the project, then build.
 
 ## Hardware connections
@@ -39,7 +35,7 @@ The same program is flashed onto **both** boards.
 | RGB LED | PF1 (red), PF3 (green) |
 | Start button SW1 | PF4 |
 
-Between the two boards connect **GND to GND**, **PE4 to PE5** and **PE5 to PE4** (each board's TX goes to the other board's RX).
+Between the two boards connect GND to GND, PE4 to PE5 and PE5 to PE4 (each board's TX goes to the other board's RX).
 
 ## UART settings
 
@@ -48,16 +44,16 @@ Between the two boards connect **GND to GND**, **PE4 to PE5** and **PE5 to PE4**
 | Console (UART0) | 115200 | 8 data bits, no parity, 1 stop bit |
 | Board link (UART5) | 9600 | 8 data bits, no parity, 1 stop bit |
 
-The system clock is left at the reset default of 16 MHz (internal oscillator, no PLL). Baud rate and SysTick timing are computed from that.
+The system clock is the reset default of 16 MHz (internal oscillator, no PLL). Baud rate and SysTick timing are computed from that.
 
 UART receive is interrupt driven: `UART0_Handler` and `UART5_Handler` copy incoming bytes into a 32-byte ring buffer per port, and the main loop reads from those buffers. Transmit uses `UARTCharPutNonBlocking` and retries a byte until the FIFO accepts it.
 
 ## How to run
 
-1. Flash the same build onto both boards and wire them as above.
+1. Flash the same build onto both boards and wire them as described above.
 2. Open a serial terminal (115200 baud) on each board's COM port.
 3. On reset each board prints the rules and waits.
-4. Press **SW1** on one board. That board becomes **Player 1 (X)** and sends `'S'` to the other, which becomes **Player 2 (O)**.
+4. Press SW1 on one board. That board becomes Player 1 (X) and sends `'S'` to the other, which becomes Player 2 (O).
 5. Player 1 moves first.
 
 ## How to play
@@ -72,7 +68,7 @@ Cells are numbered like the first 3 rows and 3 columns of the keypad:
 
 - Cell number = keypad row x 3 + keypad column. The keypad's 4th row and 4th column are outside the grid.
 - A blinking green LED (PF3) means it is your move. A solid red LED (PF1) means wait for the other player.
-- Each move has **15 seconds**. The 7-segment display counts the remaining seconds down; a leading zero is not shown.
+- Each move has 15 seconds. The 7-segment display counts the remaining seconds down; a leading zero is not shown.
 - If a player runs out of time, the console prints `Out of time!` and the other player is declared the winner.
 - After a game ends (win, draw or timeout) the LEDs and display are turned off, and SW1 starts a new game.
 - Keypad presses are debounced for 250 ms and SW1 presses for 300 ms. A keypad press made while it is not your turn is discarded when your turn begins.
