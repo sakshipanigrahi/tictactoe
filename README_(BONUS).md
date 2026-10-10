@@ -6,7 +6,7 @@ This README focuses on the **bonus part of the assignment: developing our own UA
 
 ---
 
-## Project files
+## Project files 
 
 | File | What it contains |
 |------|------------------|
